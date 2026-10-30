@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Precificador Honest Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ficha de cálculo à esquerda, etiqueta de gôndola à direita; abaixo, uma aba por condomínio com destaques e produtos. */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --ink:#18241f; --muted:#5d6b64; --line:#d9ded9;
+  --tag:#f6cf3c; --tag-ink:#1a1a12; --accent:#1f6b4f; --accent-soft:#e3efe9;
+  --bad:#b3261e; --bad-soft:#fbe9e7; --warn:#8a5a00; --warn-soft:#fdf1d8;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111714; --surface:#19211d; --ink:#e7ece9; --muted:#9aa8a1; --line:#2c3732;
+  --tag:#e9c235; --tag-ink:#16160e; --accent:#6cc7a0; --accent-soft:#1d3229;
+  --bad:#ff8a80; --bad-soft:#3a1f1d; --warn:#f2c46b; --warn-soft:#33290f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111714; --surface:#19211d; --ink:#e7ece9; --muted:#9aa8a1; --line:#2c3732;
+  --tag:#e9c235; --tag-ink:#16160e; --accent:#6cc7a0; --accent-soft:#1d3229;
+  --bad:#ff8a80; --bad-soft:#3a1f1d; --warn:#f2c46b; --warn-soft:#33290f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1160px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+header h1{font-family:var(--f-display);font-weight:700;font-size:2.4rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+header p{margin:8px 0 0;color:var(--muted);max-width:66ch}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);margin-top:8px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.on i{background:var(--accent)} .sync.off i{background:var(--warn)}
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+.panel h2{font-family:var(--f-display);font-weight:600;font-size:1.35rem;margin:0 0 14px;letter-spacing:.01em}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:480px){.fields{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+label,.lbl{display:block;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
+input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 10px}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.money{position:relative}.money span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:var(--f-mono);font-size:.9rem;pointer-events:none}
+.money input{padding-left:34px;font-family:var(--f-mono)}
+.hint{font-size:.8rem;color:var(--muted);margin-top:4px}
+.check{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:.92rem;font-weight:500;color:var(--ink);margin:0}
+.check input{width:auto;margin:0}
+.condos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.condos label{border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--bg);cursor:pointer}
+.condos label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.condos label:has(input:disabled){opacity:.5;cursor:not-allowed}
+.condos small{display:block;color:var(--muted);font-size:.74rem;font-weight:400;margin-left:24px}
+button{font:inherit;cursor:pointer;border-radius:7px;padding:9px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+button.link{border:none;background:none;color:var(--accent);padding:4px 0;text-decoration:underline}
+button.small{padding:4px 9px;font-size:.8rem}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.editbar{background:var(--warn-soft);color:var(--warn);border-radius:7px;padding:8px 12px;font-size:.88rem;font-weight:500}
+
+/* etiqueta */
+.tag{background:var(--tag);color:var(--tag-ink);border-radius:6px;padding:18px 20px 16px;position:relative}
+.tag::before{content:"";position:absolute;right:16px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--surface);opacity:.85}
+.tag .nome{font-family:var(--f-display);font-weight:600;font-size:1.15rem;text-transform:uppercase;letter-spacing:.05em;min-height:1.4em;padding-right:28px}
+.tag .preco{font-family:var(--f-display);font-weight:700;line-height:.9;display:flex;align-items:flex-start;gap:4px;margin-top:6px}
+.tag .preco .rs{font-size:1.6rem;margin-top:8px}
+.tag .preco .int{font-size:5.2rem;font-variant-numeric:tabular-nums}
+.tag .preco .cent{font-size:2.4rem;margin-top:8px}
+.tag .sub{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--f-mono);font-size:.85rem;border-top:1.5px dashed rgba(0,0,0,.35);padding-top:8px;margin-top:8px}
+.perloja{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.85rem}
+.perloja span b{font-family:var(--f-mono);font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.kpi .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--f-mono);font-size:1.1rem;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi .v.pos{color:var(--accent)} .kpi .v.neg{color:var(--bad)}
+@media (max-width:480px){.kpis{grid-template-columns:1fr 1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.chip{font-size:.8rem;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:500}
+.chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.steps{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;font-size:.88rem;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--f-display);font-weight:700;font-size:1rem;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.steps b{font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* abas por condomínio */
+.sechead{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sechead h2{font-family:var(--f-display);font-weight:600;font-size:1.6rem;margin:0}
+.sechead p{margin:2px 0 0;color:var(--muted);font-size:.88rem;max-width:72ch}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:thin}
+.tabs button{border:none;border-radius:8px 8px 0 0;background:none;padding:10px 16px;font-family:var(--f-display);font-weight:600;font-size:1.1rem;color:var(--muted);white-space:nowrap;margin-bottom:-2px;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);background:var(--surface)}
+.tabs .n{font-family:var(--f-mono);font-size:.78rem;font-weight:500;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:2px}
+.tabpanel{background:var(--surface);border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;padding:18px;display:grid;gap:18px}
+.highlights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.highlights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.highlights{grid-template-columns:minmax(0,1fr)}}
+.hl{border:1px solid var(--line);border-radius:9px;padding:12px 14px;display:grid;gap:4px;align-content:start;min-width:0}
+.hl .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.hl .p{font-family:var(--f-display);font-weight:600;font-size:1.3rem;line-height:1.15;overflow-wrap:anywhere}
+.hl .v{font-family:var(--f-mono);font-size:.95rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.hl .s{font-size:.8rem;color:var(--muted)}
+.hl.top{border-color:var(--accent);background:var(--accent-soft)}
+.hl.alert{border-color:var(--bad);background:var(--bad-soft)} .hl.alert .v{color:var(--bad)}
+.hl.empty .p{color:var(--muted);font-family:var(--f-body);font-size:.9rem;font-weight:400}
+.ranking h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:.86rem}
+.bar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{height:12px;background:var(--bg);border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:3px}
+.bar .vl{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:480px){.bar{grid-template-columns:minmax(0,110px) minmax(0,1fr) 80px}}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.toolbar input{max-width:280px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:1040px;font-size:.88rem}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+td:first-child,th:first-child,td:nth-child(2),th:nth-child(2){text-align:left}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+.badge{font-size:.7rem;padding:1px 6px;border-radius:4px;background:var(--warn-soft);color:var(--warn);margin-left:6px;font-family:var(--f-body);font-weight:500}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.cin{width:86px;padding:5px 7px;font-family:var(--f-mono);text-align:right}
+.qin{width:70px;padding:5px 7px;font-family:var(--f-mono);text-align:right}
+.var{display:block;font-size:.72rem;font-family:var(--f-body)}
+.var.up{color:var(--bad)} .var.down{color:var(--accent)}
+.remarcar{display:inline-flex;gap:6px;align-items:center}
+.pos{color:var(--accent)} .neg{color:var(--bad)}
+.emptyrow{text-align:left;color:var(--muted);white-space:normal;padding:22px 14px}
+.acts{display:flex;gap:10px;justify-content:flex-end}
+details.panel summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.25rem}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:16px}
+.pgrid h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;color:var(--muted)}
+.pline{display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:8px;align-items:center;margin-bottom:6px;font-size:.88rem}
+.pline label{text-transform:none;letter-spacing:0;font-weight:400;font-size:.88rem;color:var(--ink);margin:0}
+.pline input{padding:6px 8px;font-family:var(--f-mono);text-align:right}
+.note{font-size:.82rem;color:var(--muted);max-width:80ch}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem;z-index:20;max-width:calc(100% - 32px)}
+html{color-scheme:light}
+body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.login{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:30;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login form{width:100%;max-width:360px;display:grid;gap:12px}
+.login h1{font-family:var(--f-display);font-weight:700;font-size:2rem;margin:0}
+.login p{margin:0;color:var(--muted);font-size:.9rem}
+.login .err{color:var(--bad);font-size:.88rem;min-height:1.2em}
+</style>
+</head>
+<body>
+<div class="login" id="login" hidden>
+  <form id="loginForm" class="panel" autocomplete="on">
+    <h1>Honest Box</h1>
+    <p>Digite a senha da equipe para abrir o precificador.</p>
+    <div><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password"></div>
+    <div class="err" id="loginErr" aria-live="polite"></div>
+    <button type="submit" class="primary">Entrar</button>
+  </form>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Precificador Honest Box</h1>
+    <p>Cadastre o produto com o custo de compra e os condomínios onde ele é vendido. A calculadora sugere o preço de gôndola de cada loja, e cada condomínio tem sua aba com os produtos, os destaques e os avisos de remarcação quando o custo muda.</p>
+    <div class="sync" id="sync"><i></i><span>Conectando…</span></div>
+  </header>
+
+  <div class="grid">
+    <form class="panel" id="form" autocomplete="off">
+      <h2 id="formTitle">Cadastrar produto</h2>
+      <div class="fields">
+        <div class="full editbar" id="editbar" hidden></div>
+        <div class="full"><label for="nome">Nome do produto</label><input id="nome" placeholder="Ex.: Água sem gás 500 ml" value="Água sem gás 500 ml"></div>
+        <div><label for="custo">Custo de compra (un.)</label><div class="money"><span>R$</span><input id="custo" inputmode="decimal" value="2,00"></div></div>
+        <div><label for="qtd">Vendas por mês (un.)</label><input id="qtd" inputmode="numeric" placeholder="opcional"><div class="hint">Em branco para produto novo.</div></div>
+        <div class="full"><span class="lbl" id="condosLbl">Condomínios</span>
+          <div class="condos" role="group" aria-labelledby="condosLbl">
+            <label class="check" for="c_A"><input type="checkbox" id="c_A" value="A" checked> Mirante da Vila<small>Faixa A</small></label>
+            <label class="check" for="c_B"><input type="checkbox" id="c_B" value="B"> Abacateiros<small>Faixa B</small></label>
+            <label class="check" for="c_C1"><input type="checkbox" id="c_C1" value="C1"> Costa Azul<small>Faixa C</small></label>
+            <label class="check" for="c_C2"><input type="checkbox" id="c_C2" value="C2"> Orlando Coser<small>Faixa C</small></label>
+          </div>
+          <div class="hint">O produto vai para a aba de cada condomínio marcado, com o preço daquela loja.</div></div>
+        <div class="full"><label for="grupo">Grupo do produto</label>
+          <select id="grupo">
+            <option value="ancora">Âncora: o morador sabe o preço (leite, pão, arroz, Coca 2 L)</option>
+            <option value="rotina">Rotina: compra planejada, pouco comparada (macarrão, higiene)</option>
+            <option value="urgencia" selected>Urgência e gelado (água, gelo, cerveja gelada, pilha)</option>
+            <option value="impulso">Impulso (chocolate, salgadinho, sorvete, bala)</option>
+            <option value="premium">Pronto e premium (congelado individual, long neck premium)</option>
+          </select></div>
+        <div class="full"><label for="trib">Situação tributária</label>
+          <select id="trib">
+            <option value="st_mono" selected>ICMS-ST + PIS/COFINS monofásico (cerveja, refrigerante, água)</option>
+            <option value="st_pis">ICMS-ST + PIS/COFINS normal (ex.: sorvete)</option>
+            <option value="trib">Tributado normal: ICMS 17% + PIS/COFINS 9,25%</option>
+            <option value="cesta">Cesta básica: ICMS reduzido 7%, sem PIS/COFINS</option>
+            <option value="custom">Outra (informar %)</option>
+          </select>
+          <div class="hint">Confirme com o contador pelo NCM do produto.</div></div>
+        <div id="customWrap" hidden><label for="tcustom">Imposto na venda (%)</label><input id="tcustom" inputmode="decimal" value="17"></div>
+        <div class="full"><label class="check" for="nota"><input type="checkbox" id="nota" checked> Comprado com nota fiscal no CNPJ (gera crédito de imposto)</label></div>
+        <div class="full"><label for="ref">Preço no supermercado vizinho</label><div class="money"><span>R$</span><input id="ref" inputmode="decimal" placeholder="opcional"></div><div class="hint">Limita o preço de âncoras e rotina.</div></div>
+        <div class="full row"><button type="submit" class="primary" id="add">Cadastrar produto</button><button type="button" id="cancelEdit" hidden>Cancelar edição</button><span class="hint" id="addmsg" aria-live="polite"></span></div>
+      </div>
+    </form>
+
+    <section class="panel" aria-live="polite">
+      <div class="tag">
+        <div class="nome" id="tNome"></div>
+        <div class="preco"><span class="rs">R$</span><span class="int" id="tInt">0</span><span class="cent" id="tCent">,00</span></div>
+        <div class="sub"><span id="tMk"></span><span id="tHoje"></span></div>
+      </div>
+      <div class="perloja" id="perloja"></div>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Sobra por unidade</div><div class="v" id="kSobra"></div></div>
+        <div class="kpi"><div class="l">Ganho vs. 40%</div><div class="v" id="kGanho"></div></div>
+        <div class="kpi"><div class="l">Sobra no mês</div><div class="v" id="kMes"></div></div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <ol class="steps" id="steps"></ol>
+    </section>
+  </div>
+
+  <section>
+    <div class="sechead">
+      <div><h2>Produtos por condomínio</h2><p>Mude o custo direto na tabela quando a compra vier com outro preço: o preço sugerido é recalculado e o produto aparece em "Remarcar" até alguém atualizar a etiqueta e clicar em "Remarquei".</p></div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="tabpanel" role="tabpanel" id="panel">
+      <div class="highlights" id="highlights"></div>
+      <div class="ranking" id="ranking"></div>
+      <div class="toolbar">
+        <input id="busca" type="search" placeholder="Buscar produto nesta aba" aria-label="Buscar produto nesta aba">
+        <div class="row"><span class="hint" id="countInfo"></span><button type="button" class="link" id="rmEx" hidden>Remover exemplos</button></div>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Produto</th><th>Grupo</th><th>Custo (un.)</th><th>Piso</th><th>Sugerido</th><th>Na gôndola</th><th>Margem</th><th>Sobra/un.</th><th>Vendas/mês</th><th>Sobra/mês</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <details class="panel" id="params">
+    <summary>Parâmetros do cálculo</summary>
+    <p class="note" id="paramsNote">Valem para todos que usam o precificador.</p>
+    <div class="pgrid">
+      <div>
+        <h3>Custos que saem do preço</h3>
+        <div class="pline"><label for="pCartao">Taxa de cartão (%)</label><input id="pCartao" inputmode="decimal"></div>
+        <div class="pline"><label for="pPerdas">Perdas e furto (%)</label><input id="pPerdas" inputmode="decimal"></div>
+        <div class="pline"><label for="pSobra">Sobra mínima no piso (%)</label><input id="pSobra" inputmode="decimal"></div>
+      </div>
+      <div>
+        <h3>Markup base por grupo (%)</h3>
+        <div class="pline"><label for="m_ancora">Âncora</label><input id="m_ancora" inputmode="decimal"></div>
+        <div class="pline"><label for="m_rotina">Rotina</label><input id="m_rotina" inputmode="decimal"></div>
+        <div class="pline"><label for="m_urgencia">Urgência e gelado</label><input id="m_urgencia" inputmode="decimal"></div>
+        <div class="pline"><label for="m_impulso">Impulso</label><input id="m_impulso" inputmode="decimal"></div>
+        <div class="pline"><label for="m_premium">Pronto e premium</label><input id="m_premium" inputmode="decimal"></div>
+      </div>
+      <div>
+        <h3>Regras de ticket</h3>
+        <div class="pline"><label for="pBaixoLim">Custo baixo até (R$)</label><input id="pBaixoLim" inputmode="decimal"></div>
+        <div class="pline"><label for="pBaixoAdd">Acréscimo no custo baixo (p.p.)</label><input id="pBaixoAdd" inputmode="decimal"></div>
+        <div class="pline"><label for="pMedLim">Ticket médio a partir de (R$)</label><input id="pMedLim" inputmode="decimal"></div>
+        <div class="pline"><label for="pMedMax">Markup máximo no ticket médio (%)</label><input id="pMedMax" inputmode="decimal"></div>
+        <div class="pline"><label for="pAltoLim">Ticket alto a partir de (R$)</label><input id="pAltoLim" inputmode="decimal"></div>
+        <div class="pline"><label for="pAltoMax">Markup máximo no ticket alto (%)</label><input id="pAltoMax" inputmode="decimal"></div>
+      </div>
+      <div>
+        <h3>Ajuste por faixa de loja (p.p.)</h3>
+        <div class="pline"><label for="aA">Faixa A: urgência, impulso, premium</label><input id="aA" inputmode="decimal"></div>
+        <div class="pline"><label for="aAr">Faixa A: rotina</label><input id="aAr" inputmode="decimal"></div>
+        <div class="pline"><label for="aB">Faixa B: urgência, impulso, premium</label><input id="aB" inputmode="decimal"></div>
+        <div class="pline"><label for="aBr">Faixa B: rotina</label><input id="aBr" inputmode="decimal"></div>
+        <h3 style="margin-top:14px">Prêmio máximo sobre o supermercado (%)</h3>
+        <div class="pline"><label for="tA">Faixa A</label><input id="tA" inputmode="decimal"></div>
+        <div class="pline"><label for="tB">Faixa B</label><input id="tB" inputmode="decimal"></div>
+        <div class="pline"><label for="tC">Faixa C</label><input id="tC" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px"><button type="button" id="resetP">Voltar aos valores padrão</button></div>
+    <p class="note">Âncoras não recebem ajuste por loja, para o morador ver o mesmo preço nos itens que ele conhece. Alíquotas aproximadas para o regime atual da empresa (Lucro Real); confirme cada produto com o contador. A "sobra" é o que fica de cada unidade depois do custo, dos impostos, da taxa de cartão e das perdas, e é o que paga as despesas fixas e o lucro. Margem e sobra na tabela usam o preço que está na gôndola.</p>
+  </details>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DEF={pCartao:3,pPerdas:3,pSobra:20,m_ancora:40,m_rotina:55,m_urgencia:55,m_impulso:70,m_premium:80,
+  pBaixoLim:3,pBaixoAdd:40,pMedLim:10,pMedMax:75,pAltoLim:20,pAltoMax:50,aA:10,aAr:5,aB:5,aBr:3,tA:15,tB:10,tC:5};
+const LOJAS={A:"Mirante da Vila",B:"Abacateiros",C1:"Costa Azul",C2:"Orlando Coser"};
+const ORDEM=["A","B","C1","C2"];
+const GRUPOS={ancora:"Âncora",rotina:"Rotina",urgencia:"Urgência e gelado",impulso:"Impulso",premium:"Pronto e premium"};
+const TRIB={st_mono:{t:0,n:"ICMS-ST + monofásico"},st_pis:{t:9.25,n:"ICMS-ST + PIS/COFINS 9,25%"},trib:{t:26.25,n:"ICMS 17% + PIS/COFINS 9,25%"},cesta:{t:7,n:"ICMS 7%"}};
+
+function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){return fb}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+let P=Object.assign({},DEF);
+let PRODS=[];          // {id, nome, custo, loja, grupo, trib, tcustom, nota, ref, qtd, gondola, historico:[{d,c}], ex}
+let canWrite=true, mode="loading";
+let tab=lsGet("hbTab","A"); if(!LOJAS[tab])tab="A";
+let editing=null;
+
+const num=s=>{if(s==null)return NaN;if(typeof s==="number")return s;const t=String(s).trim().replace(/\s/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",",".");return t===""?NaN:parseFloat(t)};
+const brl=v=>isFinite(v)?v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"–";
+const pct=v=>isFinite(v)?(v*100).toLocaleString("pt-BR",{maximumFractionDigits:0})+"%":"–";
+const pct1=v=>(v).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
+const faixa=l=>l==="A"?"A":l==="B"?"B":"C";
+const fmtIn=v=>isFinite(v)?v.toFixed(2).replace(".",","):"";
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtDate=d=>{const [y,m,dd]=String(d).split("-");return dd&&m?`${dd}/${m}`:d};
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2600)}
+
+function arred(p,pisoC){
+  let pc=Math.round(p*100),b=Math.floor(pc/100)*100,c;
+  c=pc<2000?[b-1,b+49,b+99]:[b-10,b+90];
+  let r=c.filter(x=>x>=pc-5).reduce((a,x)=>x<a?x:a,Infinity);
+  if(!isFinite(r)||r<=0)r=pc;
+  while(r<pisoC){r+= r<2000?50:100}
+  return r/100;
+}
+
+function calc(it){
+  const c=num(it.custo); if(!(c>0))return null;
+  const t=(it.trib==="custom"?(isFinite(num(it.tcustom))?num(it.tcustom):0):TRIB[it.trib].t)/100;
+  const cr=it.nota?t:0, cl=c*(1-cr), op=(P.pCartao+P.pPerdas)/100, smin=P.pSobra/100;
+  const den=1-t-op-smin;
+  const piso=den>0?cl/den:Infinity;
+  const fx=faixa(it.loja), g=it.grupo, notes=[];
+  let mk=P["m_"+g], adj=0;
+  if(g!=="ancora"){
+    if(fx==="A")adj=g==="rotina"?P.aAr:P.aA;
+    if(fx==="B")adj=g==="rotina"?P.aBr:P.aB;
+  }
+  mk+=adj;
+  let regra="";
+  if(g!=="ancora"&&c<=P.pBaixoLim){mk+=P.pBaixoAdd;regra=`custo baixo: +${P.pBaixoAdd} p.p.`;notes.push(["","Custo baixo: a diferença em reais quase não pesa, markup maior"])}
+  if(c>=P.pAltoLim&&mk>P.pAltoMax){mk=P.pAltoMax;regra=`ticket alto: máximo ${P.pAltoMax}%`;notes.push(["warn",`Ticket alto: markup limitado a ${P.pAltoMax}% para a diferença em reais não assustar`])}
+  else if(c>=P.pMedLim&&c<P.pAltoLim&&mk>P.pMedMax){mk=P.pMedMax;regra=`ticket médio: máximo ${P.pMedMax}%`;notes.push(["warn",`Ticket médio: markup limitado a ${P.pMedMax}%`])}
+  const alvo=c*(1+mk/100);
+  let teto=Infinity;
+  const ref=num(it.ref);
+  if(ref>0&&(g==="ancora"||g==="rotina")){const pr=fx==="A"?P.tA:fx==="C"?P.tC:P.tB;teto=ref*(1+pr/100)}
+  const base=Math.min(alvo,teto);
+  const limit=teto<alvo, tetoAbaixo=teto<piso;
+  const preco=arred(Math.max(base,isFinite(piso)?piso:base),isFinite(piso)?Math.round(piso*100):0);
+  const sobra=p=>p*(1-t-op)-cl;
+  const p40=c*1.4, s40=sobra(p40), s=sobra(preco);
+  if(p40<piso)notes.unshift(["bad","Com 40% fixo, ficaria abaixo do piso"]);
+  if(!it.nota&&t>0)notes.push(["bad","Sem nota no CNPJ: sem crédito de imposto, custo maior"]);
+  if(limit&&!tetoAbaixo)notes.push(["","Limitado pelo preço do supermercado"]);
+  if(tetoAbaixo)notes.push(["bad","No preço do supermercado não paga os custos: renegocie o custo ou avalie tirar do mix"]);
+  if(base<piso&&!tetoAbaixo)notes.push(["warn","Markup do grupo ficou abaixo do piso; vale o piso"]);
+  return {c,t,cr,cl,op,smin,piso,mk,adj,regra,alvo,teto,ref,preco,s,p40,s40,ganho:s-s40,mkEf:preco/c-1,mg:s/preco,notes,fx,sobra};
+}
+
+/* ---------- formulário e etiqueta ---------- */
+const lojasMarcadas=()=>ORDEM.filter(l=>$("c_"+l).checked);
+function readForm(){
+  return {nome:$("nome").value.trim(),custo:num($("custo").value),grupo:$("grupo").value,trib:$("trib").value,
+    tcustom:num($("tcustom").value),nota:$("nota").checked,ref:num($("ref").value),qtd:num($("qtd").value)};
+}
+function render(){
+  $("customWrap").hidden=$("trib").value!=="custom";
+  const f=readForm(), lojas=lojasMarcadas(), loja=lojas[0]||"A";
+  const it={...f,loja}, r=calc(it);
+  $("tNome").textContent=f.nome||"Produto sem nome";
+  if(!r){$("tInt").textContent="0";$("tCent").textContent=",00";$("tMk").textContent="Informe o custo";$("tHoje").textContent="";$("perloja").innerHTML="";
+    ["kSobra","kGanho","kMes"].forEach(k=>$(k).textContent="–");$("chips").innerHTML="";$("steps").innerHTML="";return}
+  const [i,cnt]=r.preco.toFixed(2).split(".");
+  $("tInt").textContent=Number(i).toLocaleString("pt-BR");$("tCent").textContent=","+cnt;
+  $("tMk").textContent="Markup "+pct(r.mkEf)+" · margem "+pct(r.mg);
+  $("tHoje").textContent=LOJAS[loja]+" · 40% fixo: "+brl(r.p40);
+  $("perloja").innerHTML=lojas.length>1?lojas.map(l=>`<span>${LOJAS[l]}: <b>${brl(calc({...f,loja:l}).preco)}</b></span>`).join(""):"";
+  $("kSobra").textContent=brl(r.s);
+  const kg=$("kGanho");kg.textContent=(r.ganho>=0?"+":"")+brl(r.ganho);kg.className="v "+(r.ganho>=0.005?"pos":r.ganho<=-0.005?"neg":"");
+  const km=$("kMes");
+  if(f.qtd>0){km.textContent=brl(r.s*f.qtd);km.className="v"}else{km.textContent="–";km.className="v"}
+  $("chips").innerHTML=r.notes.map(([k,txt])=>`<span class="chip ${k}">${txt}</span>`).join("");
+  const tribTxt=f.trib==="custom"?pct1(r.t*100):TRIB[f.trib].n;
+  const lojaTxt=r.adj?` + ${r.adj} p.p. de ${LOJAS[loja]}`:"";
+  const regraTxt=r.regra?` (${r.regra})`:"";
+  const tetoTxt=isFinite(r.teto)?` Teto pelo supermercado: ${brl(r.ref)} + prêmio = <span class="mono">${brl(r.teto)}</span>.`:"";
+  $("steps").innerHTML=[
+    `<span><b>Grupo ${GRUPOS[f.grupo]}:</b> markup ${P["m_"+f.grupo]}%${lojaTxt}${regraTxt} = <span class="mono">${r.mk}%</span>.</span>`,
+    `<span><b>Piso:</b> custo líquido <span class="mono">${brl(r.cl)}</span> ÷ (1 − ${pct1(r.t*100)} imposto − ${pct1(r.op*100)} cartão e perdas − ${pct1(r.smin*100)} sobra mínima) = <span class="mono">${isFinite(r.piso)?brl(r.piso):"impossível"}</span>. Imposto: ${tribTxt}${f.nota?"":", sem crédito"}.</span>`,
+    `<span><b>Preço alvo:</b> ${brl(r.c)} × ${(1+r.mk/100).toLocaleString("pt-BR",{maximumFractionDigits:2})} = <span class="mono">${brl(r.alvo)}</span>.${tetoTxt}</span>`,
+    `<span><b>Gôndola:</b> arredondado para cima até o próximo final ,49 ou ,99 (,90 acima de R$ 20), nunca abaixo do piso = <span class="mono">${brl(r.preco)}</span>.</span>`
+  ].map(x=>`<li>${x}</li>`).join("");
+}
+
+function startEdit(p){
+  editing=p.id;
+  $("nome").value=p.nome;$("custo").value=fmtIn(num(p.custo));$("qtd").value=num(p.qtd)>0?p.qtd:"";
+  $("grupo").value=p.grupo;$("trib").value=p.trib;$("tcustom").value=isFinite(num(p.tcustom))?String(p.tcustom).replace(".",","):"17";
+  $("nota").checked=!!p.nota;$("ref").value=num(p.ref)>0?fmtIn(num(p.ref)):"";
+  ORDEM.forEach(l=>{const c=$("c_"+l);c.checked=l===p.loja;c.disabled=l!==p.loja});
+  $("formTitle").textContent="Editar produto";$("add").textContent="Salvar alterações";$("cancelEdit").hidden=false;
+  $("editbar").hidden=false;$("editbar").textContent=`Editando ${p.nome} em ${LOJAS[p.loja]}. Para vender em outro condomínio, cadastre de novo.`;
+  $("addmsg").textContent="";render();$("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+function endEdit(){
+  editing=null;ORDEM.forEach(l=>{$("c_"+l).disabled=false});
+  $("formTitle").textContent="Cadastrar produto";$("add").textContent="Cadastrar produto";$("cancelEdit").hidden=true;$("editbar").hidden=true;
+}
+
+/* ---------- armazenamento (API na Vercel) ---------- */
+let senha=lsGet("hbSenha","");
+let ver=-1, pollTimer=null;
+function newId(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function clean(o){const r={};for(const k in o){const v=o[k];if(v===undefined||v===null||(typeof v==="number"&&!isFinite(v)))continue;r[k]=v}return r}
+async function api(method,body,q=""){
+  const r=await fetch("/api/dados"+q,{method,cache:"no-store",headers:{"Content-Type":"application/json","x-senha":senha},body:body?JSON.stringify(body):undefined});
+  if(r.status===401){showLogin(senha?"Senha incorreta.":"");throw {code:"senha"}}
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok)throw {code:j.erro||"falha"};
+  return j;
+}
+async function pull(){
+  try{
+    const d=await api("GET",null,"?v="+ver);
+    if(d.mudou){
+      ver=d.v;PRODS=d.produtos||[];P=Object.assign({},DEF,d.params||{});
+      if(editing&&!PRODS.some(p=>p.id===editing)){endEdit()}
+      fillParams();render();renderTabs();
+    }
+    const h=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    setSync("on",`Sincronizado com a equipe · ${h}`);
+  }catch(e){
+    if(e.code==="banco_nao_configurado")setSync("off","Banco de dados não configurado na Vercel. Veja o passo 4 do LEIAME.");
+    else if(e.code!=="senha")setSync("off","Sem conexão com o servidor. Tentando de novo…");
+  }
+}
+function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(!document.hidden)pull()},8000)}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&$("login").hidden)pull()});
+async function putProd(p){
+  const i=PRODS.findIndex(x=>x.id===p.id);if(i>=0)PRODS[i]=p;else PRODS.push(p);renderTabs();
+  await api("POST",{acao:"salvar",produto:clean(p)});
+  pull();
+}
+async function patchProd(id,patch){
+  const p=PRODS.find(x=>x.id===id);if(!p)return;
+  await putProd({...p,...patch});
+}
+async function delProd(id){
+  PRODS=PRODS.filter(x=>x.id!==id);renderTabs();
+  await api("POST",{acao:"remover",id});
+  pull();
+}
+function writeErr(e){
+  if(e&&e.code==="senha")return;
+  toast("Não foi possível salvar. Confira a internet e tente de novo.");pull();
+}
+let paramTimer=null;
+function saveParams(){
+  clearTimeout(paramTimer);
+  paramTimer=setTimeout(async()=>{try{await api("POST",{acao:"parametros",params:{...P}});pull()}catch(e){writeErr(e)}},700);
+}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!canWrite){$("addmsg").textContent="Você pode consultar, mas não alterar os produtos.";return}
+  const f=readForm();
+  if(!f.nome){$("addmsg").textContent="Informe o nome do produto.";return}
+  if(!(f.custo>0)){$("addmsg").textContent="Informe um custo maior que zero.";return}
+  const lojas=lojasMarcadas();
+  if(!lojas.length){$("addmsg").textContent="Marque pelo menos um condomínio.";return}
+  $("add").disabled=true;
+  try{
+    if(editing){
+      const p=PRODS.find(x=>x.id===editing);
+      if(p){
+        const hist=Array.isArray(p.historico)?p.historico.slice():[];
+        if(Math.abs(num(p.custo)-f.custo)>0.0001)hist.push({d:today(),c:f.custo});
+        const np={...p,...f,loja:p.loja,historico:hist.slice(-24)};delete np.ex;
+        await putProd(np);
+        $("addmsg").textContent=`${f.nome} atualizado em ${LOJAS[p.loja]}.`;
+        tab=p.loja;
+      }
+      endEdit();
+    }else{
+      for(const l of lojas){
+        const r=calc({...f,loja:l});
+        await putProd({id:newId(),...f,loja:l,gondola:r.preco,historico:[{d:today(),c:f.custo}],criado:today()});
+      }
+      tab=lojas[0];
+      $("addmsg").textContent=`${f.nome} cadastrado em ${lojas.map(l=>LOJAS[l]).join(", ")}.`;
+    }
+    lsSet("hbTab",tab);renderTabs();
+  }catch(err){writeErr(err)}
+  finally{$("add").disabled=false}
+});
+$("cancelEdit").addEventListener("click",()=>{endEdit();render()});
+$("form").addEventListener("input",render);$("form").addEventListener("change",render);
+
+/* ---------- abas ---------- */
+function rowCalc(p){
+  const r=calc(p); if(!r)return null;
+  const g=num(p.gondola)>0?num(p.gondola):r.preco;
+  const s=r.sobra(g), q=num(p.qtd);
+  return {r,g,s,mg:s/g,q:q>0?q:NaN,mes:q>0?s*q:NaN,remarcar:Math.abs(g-r.preco)>=0.005,abaixo:g<r.piso-0.004};
+}
+function renderTabs(){
+  const counts={};ORDEM.forEach(l=>counts[l]=PRODS.filter(p=>p.loja===l).length);
+  $("tabs").innerHTML=ORDEM.map(l=>`<button type="button" role="tab" id="tab_${l}" aria-selected="${l===tab}" aria-controls="panel" data-l="${l}" tabindex="${l===tab?0:-1}">${LOJAS[l]}<span class="n">${counts[l]}</span></button>`).join("");
+  $("panel").setAttribute("aria-labelledby","tab_"+tab);
+  renderPanel();
+}
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-l]");if(!b)return;tab=b.dataset.l;lsSet("hbTab",tab);renderTabs()});
+$("tabs").addEventListener("keydown",e=>{if(e.key!=="ArrowRight"&&e.key!=="ArrowLeft")return;const i=ORDEM.indexOf(tab);tab=ORDEM[(i+(e.key==="ArrowRight"?1:3))%4];lsSet("hbTab",tab);renderTabs();$("tab_"+tab).focus()});
+
+function hlCard(cls,label,p,val,sub){
+  if(!p)return `<div class="hl empty"><div class="l">${label}</div><div class="p">${sub}</div></div>`;
+  return `<div class="hl ${cls}"><div class="l">${label}</div><div class="p">${esc(p.nome)}</div><div class="v">${val}</div><div class="s">${sub}</div></div>`;
+}
+function renderPanel(){
+  const all=PRODS.filter(p=>p.loja===tab).map(p=>({p,x:rowCalc(p)})).filter(o=>o.x);
+  // destaques
+  const byMg=all.slice().sort((a,b)=>b.x.mg-a.x.mg)[0];
+  const withQ=all.filter(o=>isFinite(o.x.mes));
+  const byMes=withQ.slice().sort((a,b)=>b.x.mes-a.x.mes)[0];
+  const byQ=withQ.slice().sort((a,b)=>b.x.q-a.x.q)[0];
+  const alerts=all.filter(o=>o.x.remarcar||o.x.abaixo);
+  const totMes=withQ.reduce((s,o)=>s+o.x.mes,0);
+  let h="";
+  h+=hlCard("top","Maior margem",byMg&&byMg.p,byMg?`${pct(byMg.x.mg)} · ${brl(byMg.x.s)}/un.`:"",byMg?`Vendido a ${brl(byMg.x.g)}`:"Nenhum produto cadastrado neste condomínio.");
+  h+=hlCard("top","Melhor desempenho",byMes&&byMes.p,byMes?`${brl(byMes.x.mes)} de sobra/mês`:"",byMes?`${byMes.x.q.toLocaleString("pt-BR")} un. × ${brl(byMes.x.s)}`:"Preencha as vendas por mês para ver qual produto mais gera dinheiro.");
+  h+=hlCard("","Mais vendido",byQ&&byQ.p,byQ?`${byQ.x.q.toLocaleString("pt-BR")} un./mês`:"",byQ?`Margem ${pct(byQ.x.mg)}`:"Aparece quando houver vendas por mês preenchidas.");
+  if(alerts.length){
+    const nAb=alerts.filter(o=>o.x.abaixo).length;
+    h+=`<div class="hl alert"><div class="l">Remarcar</div><div class="p">${alerts.length} ${alerts.length===1?"produto":"produtos"}</div><div class="v">${nAb?`${nAb} abaixo do piso`:"preço mudou com o custo"}</div><div class="s">${esc(alerts.slice(0,3).map(o=>o.p.nome).join(", "))}${alerts.length>3?"…":""}</div></div>`;
+  }else{
+    h+=`<div class="hl"><div class="l">Sobra total no mês</div><div class="p mono">${withQ.length?brl(totMes):"–"}</div><div class="s">${withQ.length?`${withQ.length} de ${all.length} produtos com vendas preenchidas`:"Nenhum produto para remarcar."}</div></div>`;
+  }
+  $("highlights").innerHTML=h;
+  // ranking
+  const top=withQ.slice().sort((a,b)=>b.x.mes-a.x.mes).slice(0,5);
+  const mx=top.length?Math.max(...top.map(o=>Math.max(o.x.mes,0))):0;
+  $("ranking").innerHTML=top.length>=2?`<h3>Quem mais gera dinheiro em ${LOJAS[tab]} (sobra no mês)</h3><div class="bars">${top.map(o=>`<div class="bar"><span class="nm" title="${esc(o.p.nome)}">${esc(o.p.nome)}</span><span class="track"><span class="fill" style="width:${mx>0?Math.max(2,o.x.mes/mx*100):0}%"></span></span><span class="vl">${brl(o.x.mes)}</span></div>`).join("")}</div>`:"";
+  // tabela
+  const q=$("busca").value.trim().toLowerCase();
+  const rows=all.filter(o=>!q||o.p.nome.toLowerCase().includes(q))
+    .sort((a,b)=>(b.x.remarcar-a.x.remarcar)||((isFinite(b.x.mes)?b.x.mes:-1e9)-(isFinite(a.x.mes)?a.x.mes:-1e9))||a.p.nome.localeCompare(b.p.nome,"pt-BR"));
+  $("countInfo").textContent=all.length?`${rows.length} de ${all.length} produtos`:"";
+  $("rmEx").hidden=!(canWrite&&PRODS.some(p=>p.ex));
+  const dis=canWrite?"":"disabled";
+  $("tbody").innerHTML=rows.map(({p,x})=>{
+    const hist=Array.isArray(p.historico)?p.historico:[];
+    const prev=hist.length>=2?num(hist[hist.length-2].c):NaN;
+    const varTxt=isFinite(prev)&&Math.abs(prev-x.r.c)>0.004?`<span class="var ${x.r.c>prev?"up":"down"}">${x.r.c>prev?"▲":"▼"} antes ${brl(prev)}</span>`:"";
+    const histTitle=hist.map(h=>`${fmtDate(h.d)}: ${brl(num(h.c))}`).join("\n");
+    const gond=x.remarcar
+      ?`<span class="remarcar"><span class="${x.abaixo?"neg":""}">${brl(x.g)}</span><button type="button" class="small primary rem" data-id="${p.id}" ${dis} title="Atualizei a etiqueta para ${brl(x.r.preco)}">Remarquei</button></span>`
+      :brl(x.g);
+    return `<tr>
+      <td>${esc(p.nome)}${p.ex?'<span class="badge">exemplo</span>':""}${x.abaixo?'<span class="badge bad">abaixo do piso</span>':x.remarcar?'<span class="badge">remarcar</span>':""}</td>
+      <td>${GRUPOS[p.grupo]||""}</td>
+      <td class="num" title="${esc(histTitle)}"><div class="money" style="display:inline-block"><span>R$</span><input class="cin" data-id="${p.id}" inputmode="decimal" value="${fmtIn(x.r.c)}" aria-label="Custo de ${esc(p.nome)}" ${dis}></div>${varTxt}</td>
+      <td class="num">${brl(x.r.piso)}</td>
+      <td class="num"><b>${brl(x.r.preco)}</b></td>
+      <td class="num">${gond}</td>
+      <td class="num ${x.mg<0?"neg":""}">${pct(x.mg)}</td>
+      <td class="num">${brl(x.s)}</td>
+      <td class="num"><input class="qin" data-id="${p.id}" inputmode="numeric" value="${isFinite(x.q)?x.q:""}" placeholder="–" aria-label="Vendas por mês de ${esc(p.nome)}" ${dis}></td>
+      <td class="num">${isFinite(x.mes)?brl(x.mes):"–"}</td>
+      <td><div class="acts"><button type="button" class="link ed" data-id="${p.id}" ${dis}>editar</button><button type="button" class="link rm" data-id="${p.id}" ${dis}>remover</button></div></td></tr>`}).join("")
+    ||`<tr><td colspan="11" class="emptyrow">${all.length?"Nenhum produto com esse nome.":`Nenhum produto em ${LOJAS[tab]} ainda. Cadastre um produto acima marcando ${LOJAS[tab]} e ele aparece aqui.`}</td></tr>`;
+}
+$("busca").addEventListener("input",renderPanel);
+
+let pendingRm=null;
+$("tbody").addEventListener("change",async e=>{
+  const id=e.target.dataset.id; if(!id)return;
+  const p=PRODS.find(x=>x.id===id); if(!p)return;
+  try{
+    if(e.target.classList.contains("cin")){
+      const c=num(e.target.value);
+      if(!(c>0)){toast("Informe um custo maior que zero.");e.target.value=fmtIn(num(p.custo));return}
+      if(Math.abs(c-num(p.custo))<0.0001)return;
+      const hist=(Array.isArray(p.historico)?p.historico.slice():[]);hist.push({d:today(),c});
+      await patchProd(id,{custo:c,historico:hist.slice(-24)});
+      const novo=calc({...p,custo:c}).preco;
+      toast(Math.abs(novo-(num(p.gondola)||novo))>=0.005?`Custo atualizado. Novo preço sugerido: ${brl(novo)}.`:`Custo atualizado. O preço de gôndola continua ${brl(novo)}.`);
+    }else if(e.target.classList.contains("qin")){
+      const q=num(e.target.value);
+      await patchProd(id,{qtd:q>0?q:null});
+    }
+  }catch(err){writeErr(err)}
+});
+$("tbody").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-id]"); if(!b)return;
+  const id=b.dataset.id, p=PRODS.find(x=>x.id===id); if(!p)return;
+  try{
+    if(b.classList.contains("rem")){await patchProd(id,{gondola:calc(p).preco});toast(`${p.nome}: etiqueta atualizada para ${brl(calc(p).preco)}.`)}
+    else if(b.classList.contains("ed")){startEdit(p)}
+    else if(b.classList.contains("rm")){
+      if(pendingRm!==id){pendingRm=id;b.textContent="confirmar remoção";b.classList.add("neg");setTimeout(()=>{if(pendingRm===id){pendingRm=null;renderPanel()}},4000);return}
+      pendingRm=null;await delProd(id);if(editing===id){endEdit();render()}toast(`${p.nome} removido de ${LOJAS[p.loja]}.`)
+    }
+  }catch(err){writeErr(err)}
+});
+$("rmEx").addEventListener("click",async()=>{
+  const ex=PRODS.filter(p=>p.ex);
+  try{for(const p of ex)await delProd(p.id);toast(`${ex.length} exemplos removidos.`)}catch(err){writeErr(err)}
+});
+
+/* ---------- parâmetros ---------- */
+function fillParams(){Object.keys(DEF).forEach(k=>{const el=$(k);if(document.activeElement!==el)el.value=String(P[k]).replace(".",",")})}
+$("params").addEventListener("input",e=>{const k=e.target.id;if(k in DEF){const v=num(e.target.value);if(isFinite(v)){P[k]=v;render();renderTabs();saveParams()}}});
+$("resetP").addEventListener("click",()=>{P=Object.assign({},DEF);fillParams();render();renderTabs();saveParams()});
+
+function applyWriteState(){
+  ["add"].forEach(id=>$(id).disabled=!canWrite);
+  document.querySelectorAll("#params input,#resetP").forEach(el=>el.disabled=!canWrite);
+  $("paramsNote").textContent="Valem para todos que usam o precificador.";
+  renderPanel();
+}
+function setSync(cls,txt){const s=$("sync");s.className="sync "+cls;s.querySelector("span").textContent=txt}
+
+/* ---------- login e início ---------- */
+function showLogin(msg){$("login").hidden=false;$("loginErr").textContent=msg||"";clearInterval(pollTimer);setTimeout(()=>$("senha").focus(),50)}
+$("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();senha=$("senha").value;
+  try{await api("POST",{acao:"login"});lsSet("hbSenha",senha);$("login").hidden=true;ver=-1;await pull();startPoll()}
+  catch(err){if(err.code!=="senha")$("loginErr").textContent="Não foi possível conectar. Tente de novo."}
+});
+mode="api";
+setSync("","Conectando…");
+fillParams();applyWriteState();render();renderTabs();
+pull().then(()=>{if($("login").hidden)startPoll()});
+</script>
+</body>
+</html>
